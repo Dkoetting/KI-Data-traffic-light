@@ -137,7 +137,7 @@ const BEGRUENDUNG = {
 
   ROT: (name, ctx) =>
     `„${name}" wurde als ROT eingestuft. Es liegen Merkmale vor, die auf personenbezogene Daten, vertrauliche Unternehmensinformationen, Entscheidungen über Menschen oder safety-kritische Prozesse hinweisen. ` +
-    `Im regulatorischen Umfeld „${ctx.regulatory || "DSGVO"}" ist ein formaler Governance-Prozess vor dem Einsatz zwingend erforderlich. ` +
+    `Im regulatorischen Umfeld „${Array.isArray(ctx.regulatory) ? ctx.regulatory.join(', ') : ctx.regulatory || 'DSGVO'}" ist ein formaler Governance-Prozess vor dem Einsatz zwingend erforderlich. ` +
     `Grenzfälle wurden konservativ als ROT statt ORANGE bewertet.`,
 };
 
@@ -167,8 +167,8 @@ export function klassifiziere(uc, context) {
   const { rotScore, orangeScore, gruenScore } = scoreText(fullText);
 
   // Regulatorischer Kontext verschärft Bewertung
-  const isKritisch = ["KRITIS / NIS2","Finanzregulierung","Medizinrecht / MDR / IVDR","EU AI Act Hochrisiko-Umfeld"]
-    .some(r => context.regulatory?.includes(r.split(" ")[0]));
+  const regList = Array.isArray(context.regulatory) ? context.regulatory : [context.regulatory || ""];
+  const isKritisch = regList.some(r => ["KRITIS","Finanzregulierung","Medizinrecht","EU AI Act Hochrisiko"].some(k => r.includes(k)));
 
   const isEinstieg = context.ai_maturity?.includes("Einstieg") || context.ai_maturity?.includes("Pilotphase");
 

@@ -3,12 +3,12 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg: #080808; --surface: #101010; --border: #1e1e1e; --border2: #282828;
-  --text: #e2ddd6; --text-muted: #555; --text-dim: #888;
-  --green: #1e5c38; --green-l: #4ade80; --green-bg: #061410; --green-b: #1a4a2e;
-  --orange: #92400e; --orange-l: #fb923c; --orange-bg: #160a00; --orange-b: #7c3a0a;
-  --red: #7f1d1d; --red-l: #f87171; --red-bg: #130606; --red-b: #6b1616;
-  --accent: #c8a84b; --accent-dim: #6b5a26; --accent-bg: #1a1408;
+  --bg: #141414; --surface: #1e1e1e; --border: #2c2c2c; --border2: #363636;
+  --text: #eae6de; --text-muted: #777; --text-dim: #aaa;
+  --green: #1e5c38; --green-l: #6ee7a0; --green-bg: #0e2a1a; --green-b: #235c35;
+  --orange: #92400e; --orange-l: #fdba74; --orange-bg: #2a1400; --orange-b: #92400e;
+  --red: #7f1d1d; --red-l: #fca5a5; --red-bg: #280a0a; --red-b: #7f1d1d;
+  --accent: #c8a84b; --accent-dim: #7a6530; --accent-bg: #221c0a;
   --r: 5px;
 }
 

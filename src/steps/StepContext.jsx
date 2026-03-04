@@ -3,7 +3,7 @@ const QS = [
     opts: ["Fertigung / Industrie","Finanzdienstleistungen / Versicherung","Gesundheit / MedTech / Pharma","Handel / E-Commerce","IT / Software / Tech","Öffentliche Verwaltung","Beratung / Dienstleistung","Energie / KRITIS","Bildung / Forschung","Sonstige"] },
   { id: "size", label: "Unternehmensgröße", hint: "Relevant für Risikoschwellenwerte.", type: "radio",
     opts: ["< 50 (KMU, klein)","50 – 250 (KMU, mittel)","250 – 1.000","> 1.000 (Konzern)"] },
-  { id: "regulatory", label: "Regulatorisches Umfeld", hint: "Verschärft die Bewertung bei kritischen Sektoren.", type: "radio",
+  { id: "regulatory", label: "Regulatorisches Umfeld", hint: "Mehrfachauswahl möglich. Verschärft die Bewertung bei kritischen Sektoren.", type: "multi",
     opts: ["Standard DSGVO","EU AI Act Hochrisiko-Umfeld","KRITIS / NIS2","Finanzregulierung (BaFin, MiFID)","Medizinrecht / MDR / IVDR"] },
   { id: "ai_maturity", label: "KI-Reifegrad", hint: "Niedrigerer Reifegrad → konservativere Bewertung.", type: "radio",
     opts: ["Einstieg (kein systematischer Einsatz)","Pilotphase (erste Tools im Einsatz)","Fortgeschritten (mehrere Abteilungen)","Strategisch (KI als Kernbestandteil)"] },
@@ -12,8 +12,17 @@ const QS = [
 ];
 
 export default function StepContext({ context, setContext, onNext }) {
-  const done = QS.every(q => context[q.id]);
+  const done = QS.every(q => {
+    if (q.type === "multi") return (context[q.id] || []).length > 0;
+    return !!context[q.id];
+  });
+
   const set = (id, v) => setContext(p => ({...p, [id]: v}));
+
+  const toggleMulti = (id, v) => setContext(p => {
+    const cur = p[id] || [];
+    return {...p, [id]: cur.includes(v) ? cur.filter(x => x !== v) : [...cur, v]};
+  });
 
   return (
     <div className="card">
@@ -31,6 +40,24 @@ export default function StepContext({ context, setContext, onNext }) {
                 <option value="">Bitte auswählen…</option>
                 {q.opts.map(o => <option key={o} value={o}>{o}</option>)}
               </select>
+            ) : q.type === "multi" ? (
+              <div className="rg">
+                {q.opts.map(o => {
+                  const selected = (context[q.id] || []).includes(o);
+                  return (
+                    <div key={o} className={`ro ${selected ? "sel" : ""}`} onClick={() => toggleMulti(q.id, o)}>
+                      <div className="cb" style={{
+                        width:"13px", height:"13px", border:`2px solid ${selected ? "var(--accent)" : "var(--border2)"}`,
+                        borderRadius:"2px", flexShrink:0, background: selected ? "var(--accent)" : "transparent",
+                        display:"flex", alignItems:"center", justifyContent:"center", transition:"all 0.15s"
+                      }}>
+                        {selected && <span style={{fontSize:"9px",color:"#080808",fontWeight:"700",lineHeight:1}}>✓</span>}
+                      </div>
+                      {o}
+                    </div>
+                  );
+                })}
+              </div>
             ) : (
               <div className="rg">
                 {q.opts.map(o => (

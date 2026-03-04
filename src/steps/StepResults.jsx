@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { sendReport } from "../lib/emailReport";
 
 const COL = { GRÜN:"green", ORANGE:"orange", ROT:"red" };
 
@@ -30,7 +31,7 @@ function ResultItem({ r, onChange }) {
         </div>
         {r.grenzfall && <div className="gf-badge">⚠ Grenzfall</div>}
         <div className={`lit-badge ${ls}`}>{LIT_LABEL[ls]}</div>
-        {r.redFlag && <span title="Red Flag: Governance-Prozess nötig" style={{fontSize:"14px",marginLeft:"4px"}}>🚩</span>}
+        {r.redFlag && <span title="Red Flag" style={{fontSize:"14px",marginLeft:"4px"}}>🚩</span>}
         <div className={`chev ${open?"open":""}`}>▼</div>
       </div>
 
@@ -108,11 +109,78 @@ function exportLiteracy(results) {
   URL.revokeObjectURL(url);
 }
 
+function EmailGate({ results, context, onUnlock }) {
+  const [email, setEmail] = useState("");
+  const [status, setStatus] = useState("idle"); // idle | sending | sent | error
+  const [errMsg, setErrMsg] = useState("");
+
+  const counts = {
+    GRÜN: results.filter(r=>r.ampel==="GRÜN").length,
+    ORANGE: results.filter(r=>r.ampel==="ORANGE").length,
+    ROT: results.filter(r=>r.ampel==="ROT").length,
+  };
+
+  const submit = async () => {
+    if (!email.includes("@")) return;
+    setStatus("sending");
+    try {
+      await sendReport(email, results, context);
+      setStatus("sent");
+    } catch (e) {
+      // EmailJS nicht konfiguriert → trotzdem Report anzeigen, Fehler loggen
+      console.warn("EmailJS:", e.message);
+      setStatus("sent"); // Graceful fallback: Report trotzdem zeigen
+    }
+    onUnlock();
+  };
+
+  return (
+    <div className="card">
+      <div className="gate">
+        <div style={{fontSize:"44px",marginBottom:"18px"}}>📊</div>
+        <div className="title" style={{fontSize:"24px"}}>Report bereit</div>
+        <p className="desc" style={{margin:"10px auto 28px",maxWidth:"460px"}}>
+          {results.length} Use Case{results.length !== 1 ? "s" : ""} analysiert:&nbsp;
+          <span style={{color:"var(--green-l)"}}>{counts.GRÜN} GRÜN</span> ·&nbsp;
+          <span style={{color:"var(--orange-l)"}}>{counts.ORANGE} ORANGE</span> ·&nbsp;
+          <span style={{color:"var(--red-l)"}}>{counts.ROT} ROT</span>
+          <br/><br/>
+          Gib deine E-Mail-Adresse ein. Der Report wird dir zugeschickt und hier angezeigt.
+        </p>
+
+        {errMsg && <div className="err" style={{maxWidth:"420px",margin:"0 auto 16px"}}>{errMsg}</div>}
+
+        <div className="gate-form">
+          <input
+            className="input"
+            type="email"
+            placeholder="name@firma.de"
+            value={email}
+            onChange={e=>setEmail(e.target.value)}
+            onKeyDown={e=>e.key==="Enter" && submit()}
+            disabled={status==="sending"}
+          />
+          <button
+            className="btn btn-p"
+            disabled={!email.includes("@") || status==="sending"}
+            onClick={submit}
+          >
+            {status==="sending" ? "Sende…" : "Report ansehen"}
+          </button>
+        </div>
+
+        <div style={{marginTop:"14px",fontFamily:"DM Mono, monospace",fontSize:"9px",color:"var(--text-muted)"}}>
+          Kein Newsletter · Keine Weitergabe · Report wird per E-Mail zugestellt
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function StepResults({ results: init, setResults, context, onBack }) {
   const [results, setLocal] = useState(init);
   const [filter, setFilter] = useState("ALLE");
-  const [email, setEmail] = useState("");
-  const [gated, setGated] = useState(true);
+  const [unlocked, setUnlocked] = useState(false);
 
   const update = (i, r) => { const n=[...results]; n[i]=r; setLocal(n); };
 
@@ -124,34 +192,22 @@ export default function StepResults({ results: init, setResults, context, onBack
   const grenzfaelle = results.filter(r=>r.grenzfall).length;
   const filtered = filter==="ALLE" ? results : results.filter(r=>r.ampel===filter);
 
-  if (gated) return (
-    <div className="card">
-      <div className="gate">
-        <div style={{fontSize:"44px",marginBottom:"18px"}}>📊</div>
-        <div className="title" style={{fontSize:"24px"}}>Report bereit</div>
-        <p className="desc" style={{margin:"10px auto 28px",maxWidth:"440px"}}>
-          {results.length} Use Cases analysiert. Gib deine E-Mail-Adresse ein, um den vollständigen Report mit Ampelbewertungen und Art.-4-Literacy-Nachweis zu sehen.
-        </p>
-        <div className="gate-form">
-          <input className="input" type="email" placeholder="name@firma.de" value={email} onChange={e=>setEmail(e.target.value)}/>
-          <button className="btn btn-p" disabled={!email.includes("@")} onClick={()=>setGated(false)}>Report ansehen</button>
-        </div>
-        <div style={{marginTop:"14px",fontFamily:"DM Mono, monospace",fontSize:"9px",color:"var(--text-muted)"}}>
-          Kein Newsletter · Keine Weitergabe · Nur für interne Verarbeitung
-        </div>
-      </div>
-    </div>
-  );
+  if (!unlocked) {
+    return <EmailGate results={results} context={context} onUnlock={()=>setUnlocked(true)} />;
+  }
 
   return (
     <div>
       <div className="card" style={{marginBottom:"14px"}}>
-        <div className="eyebrow">Schritt 3 von 3 · Report</div>
-        <h1 className="title">Governance Report</h1>
-        <p className="desc">{context.industry} · {context.size} · {context.regulatory}</p>
+        <div className="eyebrow">Report · Governance Übersicht</div>
+        <h1 className="title">KI-Datenampel Report</h1>
+        <p className="desc">
+          {context.industry} · {context.size} ·&nbsp;
+          {Array.isArray(context.regulatory) ? context.regulatory.join(', ') : context.regulatory}
+        </p>
         {grenzfaelle > 0 && (
           <div style={{marginTop:"14px",fontFamily:"DM Mono, monospace",fontSize:"10px",color:"var(--orange-l)",padding:"9px 12px",background:"var(--orange-bg)",borderRadius:"2px",border:"1px solid var(--orange-b)"}}>
-            {grenzfaelle} Grenzfall{grenzfaelle>1?"e":""} erkannt. Diese wurden nach dem Vorsichtsprinzip in die strengere Kategorie eingestuft. Bei Bedarf manuell überprüfen.
+            {grenzfaelle} Grenzfall{grenzfaelle>1?"e":""} erkannt. Vorsichtsprinzip angewendet: strengere Kategorie vergeben. Bei Bedarf manuell prüfen.
           </div>
         )}
       </div>
